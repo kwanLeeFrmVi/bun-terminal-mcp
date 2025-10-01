@@ -1,8 +1,8 @@
 {
   "mcpServers": {
     "bun-terminal": {
-      "command": "bunx",
-      "args": ["-y","bun-terminal-mcp"]
+      "command": "bun",
+      "args": ["run", "index.ts"]
     }
   }
 }

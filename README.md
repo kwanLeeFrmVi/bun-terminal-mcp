@@ -101,4 +101,19 @@ Add to your MCP client configuration (e.g., Claude Desktop):
 
 ## Security
 
-Bun Shell escapes all interpolated strings by default, preventing shell injection attacks. Variables are treated as single quoted strings.
+⚠️ **Important Security Notice**
+
+This MCP server uses Bun's `{ raw: command }` feature to execute arbitrary shell commands. This is intentional to allow full shell functionality (pipes, redirects, command substitution, etc.), but it means:
+
+- **Any command passed to the server will be executed as-is**
+- The server does **not** sanitize or validate commands
+- Security responsibility lies with the AI agent and user to ensure safe commands
+
+**Use this server only in trusted environments.**
+
+### What this means:
+
+✅ **Good**: Full shell capabilities - pipes, redirects, globs, command substitution, etc. all work
+⚠️ **Risk**: Malicious commands will be executed if passed to the server
+
+While Bun Shell escapes interpolated strings by default, this server intentionally bypasses that protection to enable full shell command execution.

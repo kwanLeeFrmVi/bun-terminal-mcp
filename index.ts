@@ -12,15 +12,15 @@ const server = new McpServer({
 server.registerTool(
   "execute_command",
   {
-    title: "Execute Shell Command",
-    description: "Execute a shell command using Bun's secure shell. Returns stdout, stderr, and exit code.",
+    title: "Shell Command",
+    description: "Run shell commands with full bash-like features: pipes (|), redirects (>, <), globs (*), command substitution $(). Returns JSON with stdout, stderr, exitCode, success. Cross-platform (Windows/Linux/macOS).",
     inputSchema: {
-      command: z.string().describe("The shell command to execute"),
+      command: z.string().describe("Shell command string. Supports pipes, redirects, globs, variables, command substitution. Examples: 'ls -la', 'cat file.txt | grep pattern', 'echo $HOME'"),
     },
   },
   async ({ command }) => {
     try {
-      const result = await $`${command}`.quiet();
+      const result = await $`${{ raw: command }}`.quiet();
 
       const stdout = result.stdout.toString();
       const stderr = result.stderr.toString();
