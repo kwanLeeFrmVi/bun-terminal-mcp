@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "bun-terminal": {
+      "command": "bunx",
+      "args": ["-y","bun-terminal-mcp"]
+    }
+  }
+}

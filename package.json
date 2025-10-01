@@ -1,19 +1,39 @@
 {
   "name": "bun-terminal-mcp",
+  "version": "1.0.0",
+  "description": "MCP server that forwards AI agent commands to shell using Bun's secure $ utility",
   "module": "index.ts",
   "type": "module",
-  "private": true,
-  "scripts": {
-    "start": "bun run index.ts"
+  "bin": {
+    "bun-terminal-mcp": "index.ts"
   },
+  "scripts": {
+    "start": "bun run index.ts",
+    "build": "bun build index.ts --outdir dist --target bun",
+    "prepublishOnly": "bun run build"
+  },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "bun",
+    "shell",
+    "terminal",
+    "ai",
+    "agent"
+  ],
+  "author": "",
+  "license": "MIT",
   "devDependencies": {
     "@types/bun": "latest"
-  },
-  "peerDependencies": {
-    "typescript": "^5"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.18.2",
     "zod": "^4.1.11"
-  }
+  },
+  "engines": {
+    "bun": ">=1.0.0"
+  },
+  "trustedDependencies": [
+    "@modelcontextprotocol/sdk"
+  ]
 }

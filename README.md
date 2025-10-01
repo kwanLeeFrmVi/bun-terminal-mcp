@@ -17,6 +17,18 @@ bun install
 
 ## Usage
 
+### Run with bunx (recommended)
+
+After publishing to npm, you can run directly with:
+
+```bash
+bunx bun-terminal-mcp
+```
+
+**Note:** This package requires Bun runtime and is not compatible with Node.js/npx.
+
+### Run locally
+
 Start the MCP server:
 
 ```bash
@@ -27,6 +39,13 @@ Or directly:
 
 ```bash
 bun run index.ts
+```
+
+Or make it executable and run:
+
+```bash
+chmod +x index.ts
+./index.ts
 ```
 
 ## MCP Tool
@@ -53,6 +72,21 @@ Execute a shell command using Bun's secure shell.
 ## Configuration
 
 Add to your MCP client configuration (e.g., Claude Desktop):
+
+### Using bunx (after publishing)
+
+```json
+{
+  "mcpServers": {
+    "bun-terminal": {
+      "command": "bunx",
+      "args": ["bun-terminal-mcp"]
+    }
+  }
+}
+```
+
+### Using local installation
 
 ```json
 {
