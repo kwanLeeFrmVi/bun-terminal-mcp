@@ -1,11 +1,11 @@
 {
   "name": "bun-terminal-mcp",
-  "version": "1.0.3",
+  "version": "1.0.7",
   "description": "MCP server that forwards AI agent commands to shell using Bun's secure $ utility",
   "module": "index.ts",
   "type": "module",
   "bin": {
-    "bun-terminal-mcp": "index.ts"
+    "bun-terminal-mcp": "dist/index.js"
   },
   "scripts": {
     "start": "bun run index.ts",
@@ -35,5 +35,10 @@
   },
   "trustedDependencies": [
     "@modelcontextprotocol/sdk"
+  ],
+  "files": [
+    "dist",
+    "index.ts",
+    "README.md"
   ]
 }

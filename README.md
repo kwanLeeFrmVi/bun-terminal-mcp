@@ -59,32 +59,79 @@ Execute a shell command using Bun's secure shell.
 **Parameters:**
 - `command` (string): The shell command to execute
 
-**Returns:**
+**Successful Response:**
 ```json
 {
+  "success": true,
   "exitCode": 0,
   "stdout": "command output",
   "stderr": "",
-  "success": true
+  "command": "echo 'hello'",
+  "cwd": "/current/working/directory",
+  "duration": 45
 }
 ```
+
+**Error Response:**
+```json
+{
+  "success": false,
+  "exitCode": 127,
+  "stdout": "",
+  "stderr": "bun: command not found: badcommand",
+  "command": "badcommand",
+  "cwd": "/current/working/directory",
+  "duration": 12,
+  "errorType": "COMMAND_NOT_FOUND",
+  "errorMessage": "Command not found. The command 'badcommand' does not exist or is not in PATH.",
+  "hint": "Check if the command is installed and available in PATH. Try 'which <command>' to verify."
+}
+```
+
+**Error Types:**
+- `COMMAND_NOT_FOUND` - Command doesn't exist or not in PATH
+- `PERMISSION_DENIED` - Insufficient permissions
+- `FILE_NOT_FOUND` - File or directory not found
+- `INTERRUPTED` - Command was interrupted (Ctrl+C)
+- `KILLED` - Command was killed (out of memory, etc.)
+- `TIMEOUT` - Command exceeded time limit
+- `COMMAND_FAILED` - Generic command failure
+- `EXECUTION_ERROR` - Shell syntax error or execution failure
 
 ## Configuration
 
 Add to your MCP client configuration (e.g., Claude Desktop):
 
-### Using bunx (after publishing)
+### Using bunx (recommended)
 
+**Option 1: Using absolute path (most reliable)**
+```json
+{
+  "mcpServers": {
+    "bun-terminal": {
+      "command": "/Users/YOUR_USERNAME/.bun/bin/bun",
+      "args": ["x", "bun-terminal-mcp"]
+    }
+  }
+}
+```
+
+**Option 2: Using bunx with PATH**
 ```json
 {
   "mcpServers": {
     "bun-terminal": {
       "command": "bunx",
-      "args": ["bun-terminal-mcp"]
+      "args": ["-y", "bun-terminal-mcp"],
+      "env": {
+        "PATH": "/Users/YOUR_USERNAME/.bun/bin:/usr/local/bin:/usr/bin:/bin"
+      }
     }
   }
 }
 ```
+
+**Find your Bun path:** Run `which bun` in terminal to find your Bun installation path.
 
 ### Using local installation
 
