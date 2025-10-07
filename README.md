@@ -104,25 +104,13 @@ Add to your MCP client configuration (e.g., Claude Desktop):
 
 ### Using bunx (recommended)
 
-**Option 1: Using absolute path (most reliable)**
+**Option 1: Using bunx (most reliable)**
 ```json
 {
   "mcpServers": {
     "bun-terminal": {
-      "command": "/Users/YOUR_USERNAME/.bun/bin/bun",
-      "args": ["x", "bun-terminal-mcp"]
-    }
-  }
-}
-```
-
-**Option 2: Using bunx with PATH**
-```json
-{
-  "mcpServers": {
-    "bun-terminal": {
-      "command": "bunx",
-      "args": ["-y", "bun-terminal-mcp"],
+      "command": "/Users/YOUR_USERNAME/.bun/bin/bunx",
+      "args": ["--bun", "bun-terminal-mcp@latest"],
       "env": {
         "PATH": "/Users/YOUR_USERNAME/.bun/bin:/usr/local/bin:/usr/bin:/bin"
       }
@@ -131,7 +119,9 @@ Add to your MCP client configuration (e.g., Claude Desktop):
 }
 ```
 
-**Find your Bun path:** Run `which bun` in terminal to find your Bun installation path.
+> **Tip**: Replace `YOUR_USERNAME` with your actual username. Using `@latest` ensures you always get the newest version. You can also pin to a specific version like `bun-terminal-mcp@1.0.9`.
+
+**Find your Bun path:** Run `which bunx` in terminal to find your Bun installation path (usually `~/.bun/bin/bunx`).
 
 ### Using local installation
 
