@@ -17228,7 +17228,7 @@ function createErrorMessage(command, exitCode, stderr, errorType) {
 var useJsonOutput = process.argv.includes("--json");
 var server = new McpServer({
   name: "bun-terminal-mcp",
-  version: "0.0.1"
+  version: "1.0.10"
 });
 server.registerTool("execute_command", {
   title: "Shell Command",

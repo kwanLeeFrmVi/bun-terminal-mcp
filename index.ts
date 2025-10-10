@@ -9,7 +9,7 @@ const useJsonOutput = process.argv.includes("--json");
 
 const server = new McpServer({
   name: "bun-terminal-mcp",
-  version: "0.0.1",
+  version: "1.0.10",
 });
 
 server.registerTool(
