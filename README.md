@@ -4,10 +4,12 @@ A Model Context Protocol (MCP) server that forwards AI agent commands to shell u
 
 ## Features
 
-- **Secure Command Execution**: Uses Bun's shell `$` which automatically escapes interpolated strings
+- **Plain Text Output**: Token-efficient output by default (saves 60-70% tokens)
+- **Optional JSON Mode**: Use `--json` flag for structured output
+- **Timeout Support**: Configurable timeout (default: 30s, max: 5min)
+- **Secure Command Execution**: Uses Bun's shell for command execution
 - **Cross-Platform**: Works on Windows, Linux, and macOS
 - **Simple API**: Exposes a single `execute_command` tool
-- **Structured Output**: Returns stdout, stderr, exit code, and success status
 
 ## Installation
 
@@ -59,6 +61,31 @@ Execute a shell command using Bun's secure shell.
 **Parameters:**
 - `command` (string): The shell command to execute
 - `timeout` (number, optional): Timeout in milliseconds (default: 30000ms / 30s, max: 300000ms / 5min)
+
+## Output Formats
+
+### Plain Text Output (Default)
+
+Token-efficient output format that saves 60-70% tokens compared to JSON.
+
+**Successful Response:**
+```
+command output here
+```
+
+**Error Response:**
+```
+❌ COMMAND_NOT_FOUND (exit 127)
+Command not found. The command 'badcommand' does not exist or is not in PATH.
+
+bun: command not found: badcommand
+
+💡 Check if the command is installed and available in PATH.
+```
+
+### JSON Output (with `--json` flag)
+
+Use the `--json` flag when starting the server for structured JSON output.
 
 **Successful Response:**
 ```json
@@ -112,29 +139,39 @@ This will kill the command after 2 seconds and return a TIMEOUT error.
 
 Add to your MCP client configuration (e.g., Claude Desktop):
 
-### Using bunx (recommended)
+### Plain Text Mode (Recommended)
 
-**Option 1: Using bunx (most reliable)**
+Token-efficient plain text output (default):
+
 ```json
 {
   "mcpServers": {
     "bun-terminal": {
-      "command": "/Users/YOUR_USERNAME/.bun/bin/bunx",
-      "args": ["--bun", "bun-terminal-mcp@latest"],
-      "env": {
-        "PATH": "/Users/YOUR_USERNAME/.bun/bin:/usr/local/bin:/usr/bin:/bin"
-      }
+      "command": "bunx",
+      "args": ["--bun", "bun-terminal-mcp@latest"]
     }
   }
 }
 ```
 
-> **Tip**: Replace `YOUR_USERNAME` with your actual username. Using `@latest` ensures you always get the newest version. You can also pin to a specific version like `bun-terminal-mcp@1.0.9`.
+### JSON Mode
 
-**Find your Bun path:** Run `which bunx` in terminal to find your Bun installation path (usually `~/.bun/bin/bunx`).
+For structured JSON output, add `--json` flag:
 
-### Using local installation
+```json
+{
+  "mcpServers": {
+    "bun-terminal-json": {
+      "command": "bunx",
+      "args": ["--bun", "bun-terminal-mcp@latest", "--json"]
+    }
+  }
+}
+```
 
+### Local Installation
+
+**Plain Text Mode:**
 ```json
 {
   "mcpServers": {
@@ -145,6 +182,22 @@ Add to your MCP client configuration (e.g., Claude Desktop):
   }
 }
 ```
+
+**JSON Mode:**
+```json
+{
+  "mcpServers": {
+    "bun-terminal-json": {
+      "command": "bun",
+      "args": ["run", "/path/to/bun-terminal-mcp/index.ts", "--json"]
+    }
+  }
+}
+```
+
+> **Tip**: Using `@latest` ensures you always get the newest version. You can also pin to a specific version like `bun-terminal-mcp@1.0.10`.
+
+**Find your Bun path:** Run `which bunx` in terminal to find your Bun installation path (usually `~/.bun/bin/bunx`).
 
 ## Security
 
