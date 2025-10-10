@@ -58,6 +58,7 @@ Execute a shell command using Bun's secure shell.
 
 **Parameters:**
 - `command` (string): The shell command to execute
+- `timeout` (number, optional): Timeout in milliseconds (default: 30000ms / 30s, max: 300000ms / 5min)
 
 **Successful Response:**
 ```json
@@ -94,9 +95,18 @@ Execute a shell command using Bun's secure shell.
 - `FILE_NOT_FOUND` - File or directory not found
 - `INTERRUPTED` - Command was interrupted (Ctrl+C)
 - `KILLED` - Command was killed (out of memory, etc.)
-- `TIMEOUT` - Command exceeded time limit
+- `TIMEOUT` - Command exceeded time limit (killed after timeout)
 - `COMMAND_FAILED` - Generic command failure
 - `EXECUTION_ERROR` - Shell syntax error or execution failure
+
+**Timeout Example:**
+```json
+{
+  "command": "sleep 10",
+  "timeout": 2000
+}
+```
+This will kill the command after 2 seconds and return a TIMEOUT error.
 
 ## Configuration
 

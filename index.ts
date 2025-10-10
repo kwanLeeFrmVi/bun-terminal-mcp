@@ -2,40 +2,15 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
+import { categorizeError, createErrorMessage } from "./utils.js";
+
+// Check if --json flag is passed
+const useJsonOutput = process.argv.includes("--json");
 
 const server = new McpServer({
   name: "bun-terminal-mcp",
-  version: "1.1.1",
+  version: "0.0.1",
 });
-
-// Helper to categorize error types
-function categorizeError(exitCode: number, stderr: string): string {
-  if (exitCode === 127) return "COMMAND_NOT_FOUND";
-  if (exitCode === 126) return "PERMISSION_DENIED";
-  if (exitCode === 130) return "INTERRUPTED";
-  if (exitCode === 137) return "KILLED";
-  if (exitCode === 124) return "TIMEOUT";
-  if (stderr.includes("permission denied")) return "PERMISSION_DENIED";
-  if (stderr.includes("command not found") || stderr.includes("not found")) return "COMMAND_NOT_FOUND";
-  if (stderr.includes("No such file or directory")) return "FILE_NOT_FOUND";
-  if (exitCode > 0) return "COMMAND_FAILED";
-  return "UNKNOWN_ERROR";
-}
-
-// Helper to create human-readable error message
-function createErrorMessage(command: string, exitCode: number, stderr: string, errorType: string): string {
-  const messages: Record<string, string> = {
-    COMMAND_NOT_FOUND: `Command not found. The command '${command.split(' ')[0]}' does not exist or is not in PATH.`,
-    PERMISSION_DENIED: `Permission denied. You don't have permission to execute this command or access the resource.`,
-    FILE_NOT_FOUND: `File or directory not found. Check that the path exists and is spelled correctly.`,
-    INTERRUPTED: `Command was interrupted (SIGINT/Ctrl+C).`,
-    KILLED: `Command was killed (SIGKILL). Possibly out of memory or exceeded resource limits.`,
-    TIMEOUT: `Command exceeded time limit.`,
-    COMMAND_FAILED: `Command exited with non-zero status code ${exitCode}.`,
-  };
-
-  return messages[errorType] || `Command failed with exit code ${exitCode}.`;
-}
 
 server.registerTool(
   "execute_command",
@@ -87,75 +62,111 @@ server.registerTool(
       const duration = Date.now() - startTime;
       const success = exitCode === 0;
 
-      // Build detailed response
-      const response: any = {
-        success,
-        exitCode,
-        stdout,
-        stderr,
-        command,
-        cwd,
-        duration,
-      };
+      // Return JSON format if --json flag is set
+      if (useJsonOutput) {
+        const response: any = {
+          success,
+          exitCode,
+          stdout,
+          stderr,
+          command,
+          cwd,
+          duration,
+        };
 
-      // Add error details if command failed
-      if (!success) {
+        if (!success) {
+          const errorType = categorizeError(exitCode, stderr);
+          response.errorType = errorType;
+          response.errorMessage = createErrorMessage(command, exitCode, stderr, errorType);
+
+          if (errorType === "COMMAND_NOT_FOUND") {
+            response.hint = "Check if the command is installed and available in PATH. Try 'which <command>' to verify.";
+          } else if (errorType === "PERMISSION_DENIED") {
+            response.hint = "Try running with appropriate permissions or check file/directory permissions.";
+          } else if (errorType === "FILE_NOT_FOUND") {
+            response.hint = "Verify the file path is correct and the file exists. Use 'ls' to check.";
+          }
+        }
+
+        return {
+          content: [{ type: "text", text: JSON.stringify(response, null, 2) }],
+          isError: !success,
+        };
+      }
+
+      // Build plain text response (default)
+      let output = "";
+
+      if (success) {
+        output = stdout;
+        if (stderr.trim()) {
+          output += `\n[stderr]: ${stderr.trim()}`;
+        }
+      } else {
         const errorType = categorizeError(exitCode, stderr);
-        response.errorType = errorType;
-        response.errorMessage = createErrorMessage(command, exitCode, stderr, errorType);
+        const errorMessage = createErrorMessage(command, exitCode, stderr, errorType);
 
-        // Add helpful hints
+        output = `❌ ${errorType} (exit ${exitCode})\n${errorMessage}\n`;
+
+        if (stderr.trim()) {
+          output += `\n${stderr.trim()}\n`;
+        }
+
         if (errorType === "COMMAND_NOT_FOUND") {
-          response.hint = "Check if the command is installed and available in PATH. Try 'which <command>' to verify.";
+          output += `\n💡 Check if the command is installed and available in PATH.`;
         } else if (errorType === "PERMISSION_DENIED") {
-          response.hint = "Try running with appropriate permissions or check file/directory permissions.";
+          output += `\n💡 Try running with appropriate permissions.`;
         } else if (errorType === "FILE_NOT_FOUND") {
-          response.hint = "Verify the file path is correct and the file exists. Use 'ls' to check.";
+          output += `\n💡 Verify the file path exists.`;
         }
       }
 
       return {
-        content: [
-          {
-            type: "text",
-            text: JSON.stringify(response, null, 2),
-          },
-        ],
+        content: [{ type: "text", text: output || "(no output)" }],
         isError: !success,
       };
     } catch (error) {
       const err = error as Error;
       const duration = Date.now() - startTime;
-
-      // Check if it's a timeout error
       const isTimeout = err.message.includes("timeout") || err.message.includes("timed out");
 
-      // Handle execution errors (syntax errors, shell errors, timeouts, etc.)
-      const response = {
-        success: false,
-        exitCode: isTimeout ? 124 : -1,
-        stdout: "",
-        stderr: err.message,
-        command,
-        cwd,
-        duration,
-        errorType: isTimeout ? "TIMEOUT" : "EXECUTION_ERROR",
-        errorMessage: isTimeout
-          ? `Command exceeded time limit of ${timeoutMs}ms (${timeoutMs/1000}s).`
-          : `Failed to execute command: ${err.message}`,
-        hint: isTimeout
-          ? "Command took too long to execute. Try increasing timeout or simplifying the command."
-          : "This is a shell execution error. Check command syntax and shell compatibility.",
-        rawError: err.toString(),
-      };
+      // Return JSON format if --json flag is set
+      if (useJsonOutput) {
+        const response = {
+          success: false,
+          exitCode: isTimeout ? 124 : -1,
+          stdout: "",
+          stderr: err.message,
+          command,
+          cwd,
+          duration,
+          errorType: isTimeout ? "TIMEOUT" : "EXECUTION_ERROR",
+          errorMessage: isTimeout
+            ? `Command exceeded time limit of ${timeoutMs}ms (${timeoutMs/1000}s).`
+            : `Failed to execute command: ${err.message}`,
+          hint: isTimeout
+            ? "Command took too long to execute. Try increasing timeout or simplifying the command."
+            : "This is a shell execution error. Check command syntax and shell compatibility.",
+          rawError: err.toString(),
+        };
+
+        return {
+          content: [{ type: "text", text: JSON.stringify(response, null, 2) }],
+          isError: true,
+        };
+      }
+
+      // Build plain text error response (default)
+      let output = "";
+
+      if (isTimeout) {
+        output = `❌ TIMEOUT (exit 124)\nCommand exceeded time limit of ${timeoutMs}ms (${timeoutMs/1000}s).\n\n💡 Try increasing timeout or simplifying the command.`;
+      } else {
+        output = `❌ EXECUTION_ERROR (exit -1)\nFailed to execute command: ${err.message}\n\n💡 Check command syntax and shell compatibility.`;
+      }
 
       return {
-        content: [
-          {
-            type: "text",
-            text: JSON.stringify(response, null, 2),
-          },
-        ],
+        content: [{ type: "text", text: output }],
         isError: true,
       };
     }

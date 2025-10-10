@@ -2,7 +2,25 @@
   "mcpServers": {
     "bun-terminal": {
       "command": "bun",
-      "args": ["run", "index.ts"]
+      "args": [
+        "run",
+        "index.ts"
+      ]
+    },
+    "bun-terminal-json": {
+      "command": "bun",
+      "args": [
+        "run",
+        "index.ts",
+        "--json"
+      ]
+    },
+    "bun-terminal-x": {
+      "command": "bunx",
+      "args": [
+        "-y",
+        "bun-terminal-mcp"
+      ]
     }
   }
 }
