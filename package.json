@@ -1,6 +1,6 @@
 {
   "name": "bun-terminal-mcp",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "MCP server that forwards AI agent commands to shell using Bun's secure $ utility",
   "module": "index.ts",
   "type": "module",

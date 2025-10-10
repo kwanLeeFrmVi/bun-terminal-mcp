@@ -1,12 +1,11 @@
 #!/usr/bin/env bun
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import { $ } from "bun";
 import { z } from "zod";
 
 const server = new McpServer({
   name: "bun-terminal-mcp",
-  version: "1.0.7",
+  version: "1.1.1",
 });
 
 // Helper to categorize error types
@@ -45,18 +44,46 @@ server.registerTool(
     description: "Run shell commands with full bash-like features: pipes (|), redirects (>, <), globs (*), command substitution $(). Returns JSON with stdout, stderr, exitCode, success. Cross-platform (Windows/Linux/macOS).",
     inputSchema: {
       command: z.string().describe("Shell command string. Supports pipes, redirects, globs, variables, command substitution. Examples: 'ls -la', 'cat file.txt | grep pattern', 'echo $HOME'"),
+      timeout: z.number().optional().describe("Optional timeout in milliseconds (default: 30000ms / 30s, max: 300000ms / 5min)"),
     },
   },
-  async ({ command }) => {
+  async ({ command, timeout }) => {
     const startTime = Date.now();
     const cwd = process.cwd();
+    const timeoutMs = Math.min(timeout || 30000, 300000);
 
     try {
-      const result = await $`${{ raw: command }}`.nothrow().quiet();
+      // Execute command with timeout by spawning subprocess
+      const proc = Bun.spawn(["/bin/sh", "-c", command], {
+        stdout: "pipe",
+        stderr: "pipe",
+      });
 
-      const stdout = result.stdout.toString();
-      const stderr = result.stderr.toString();
-      const exitCode = result.exitCode;
+      let timedOut = false;
+
+      // Create timeout that will kill the process
+      const timeoutHandle = setTimeout(() => {
+        timedOut = true;
+        proc.kill(9); // SIGKILL
+      }, timeoutMs);
+
+      // Wait for process completion
+      const [stdoutText, stderrText] = await Promise.all([
+        new Response(proc.stdout).text(),
+        new Response(proc.stderr).text(),
+      ]);
+
+      await proc.exited;
+      clearTimeout(timeoutHandle);
+
+      // If timed out, throw an error
+      if (timedOut) {
+        throw new Error(`Command timed out after ${timeoutMs}ms`);
+      }
+
+      const stdout = stdoutText;
+      const stderr = stderrText;
+      const exitCode = proc.exitCode || 0;
       const duration = Date.now() - startTime;
       const success = exitCode === 0;
 
@@ -100,18 +127,25 @@ server.registerTool(
       const err = error as Error;
       const duration = Date.now() - startTime;
 
-      // Handle execution errors (syntax errors, shell errors, etc.)
+      // Check if it's a timeout error
+      const isTimeout = err.message.includes("timeout") || err.message.includes("timed out");
+
+      // Handle execution errors (syntax errors, shell errors, timeouts, etc.)
       const response = {
         success: false,
-        exitCode: -1,
+        exitCode: isTimeout ? 124 : -1,
         stdout: "",
         stderr: err.message,
         command,
         cwd,
         duration,
-        errorType: "EXECUTION_ERROR",
-        errorMessage: `Failed to execute command: ${err.message}`,
-        hint: "This is a shell execution error. Check command syntax and shell compatibility.",
+        errorType: isTimeout ? "TIMEOUT" : "EXECUTION_ERROR",
+        errorMessage: isTimeout
+          ? `Command exceeded time limit of ${timeoutMs}ms (${timeoutMs/1000}s).`
+          : `Failed to execute command: ${err.message}`,
+        hint: isTimeout
+          ? "Command took too long to execute. Try increasing timeout or simplifying the command."
+          : "This is a shell execution error. Check command syntax and shell compatibility.",
         rawError: err.toString(),
       };
 
