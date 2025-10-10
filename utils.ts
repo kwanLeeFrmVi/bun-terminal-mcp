@@ -26,3 +26,48 @@ export function createErrorMessage(command: string, exitCode: number, stderr: st
 
   return messages[errorType] || `Command failed with exit code ${exitCode}.`;
 }
+
+// Helper to extract base command from command string
+function extractBaseCommand(command: string): string {
+  // Remove leading/trailing whitespace
+  const trimmed = command.trim();
+
+  // Extract first word (base command)
+  const firstWord = trimmed.split(/\s+/)[0];
+
+  // Handle pipes, redirects, etc - get the actual command
+  const baseCmd = firstWord.split('|')[0].split('>')[0].split('<')[0].trim();
+
+  return baseCmd;
+}
+
+// Validate command against allowlist and denylist
+export function validateCommand(
+  command: string,
+  allowedCommands: string[] | null,
+  deniedCommands: string[] | null
+): { allowed: boolean; reason?: string } {
+  const baseCommand = extractBaseCommand(command);
+
+  // If allowlist exists, command must be in the list
+  if (allowedCommands && allowedCommands.length > 0) {
+    if (!allowedCommands.includes(baseCommand)) {
+      return {
+        allowed: false,
+        reason: `Command '${baseCommand}' is not in the allowlist. Allowed commands: ${allowedCommands.join(", ")}`,
+      };
+    }
+  }
+
+  // If denylist exists, command must NOT be in the list
+  if (deniedCommands && deniedCommands.length > 0) {
+    if (deniedCommands.includes(baseCommand)) {
+      return {
+        allowed: false,
+        reason: `Command '${baseCommand}' is in the denylist. Denied commands: ${deniedCommands.join(", ")}`,
+      };
+    }
+  }
+
+  return { allowed: true };
+}

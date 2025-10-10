@@ -2,14 +2,26 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
-import { categorizeError, createErrorMessage } from "./utils.js";
+import { categorizeError, createErrorMessage, validateCommand } from "./utils.js";
 
-// Check if --json flag is passed
+// Parse CLI arguments
 const useJsonOutput = process.argv.includes("--json");
+
+// Parse allowlist (--allow ls,cd,pwd)
+const allowIndex = process.argv.findIndex(arg => arg === "--allow");
+const allowedCommands: string[] | null = allowIndex > -1 && process.argv[allowIndex + 1]
+  ? process.argv[allowIndex + 1].split(",").map(cmd => cmd.trim())
+  : null;
+
+// Parse denylist (--deny rm,rmdir,dd)
+const denyIndex = process.argv.findIndex(arg => arg === "--deny");
+const deniedCommands: string[] | null = denyIndex > -1 && process.argv[denyIndex + 1]
+  ? process.argv[denyIndex + 1].split(",").map(cmd => cmd.trim())
+  : null;
 
 const server = new McpServer({
   name: "bun-terminal-mcp",
-  version: "1.0.10",
+  version: "1.0.11",
 });
 
 server.registerTool(
@@ -26,6 +38,29 @@ server.registerTool(
     const startTime = Date.now();
     const cwd = process.cwd();
     const timeoutMs = Math.min(timeout || 30000, 300000);
+
+    // Validate command against allowlist/denylist
+    const validation = validateCommand(command, allowedCommands, deniedCommands);
+    if (!validation.allowed) {
+      const errorOutput = useJsonOutput
+        ? JSON.stringify({
+            success: false,
+            exitCode: -1,
+            stdout: "",
+            stderr: validation.reason,
+            command,
+            cwd,
+            duration: 0,
+            errorType: "COMMAND_BLOCKED",
+            errorMessage: validation.reason,
+          }, null, 2)
+        : `❌ COMMAND_BLOCKED\n${validation.reason}`;
+
+      return {
+        content: [{ type: "text", text: errorOutput }],
+        isError: true,
+      };
+    }
 
     try {
       // Execute command with timeout by spawning subprocess

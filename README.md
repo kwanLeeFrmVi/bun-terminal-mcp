@@ -4,6 +4,7 @@ A Model Context Protocol (MCP) server that forwards AI agent commands to shell u
 
 ## Features
 
+- **Command Filtering**: Allowlist/denylist support for safe command execution
 - **Plain Text Output**: Token-efficient output by default (saves 60-70% tokens)
 - **Optional JSON Mode**: Use `--json` flag for structured output
 - **Timeout Support**: Configurable timeout (default: 30s, max: 5min)
@@ -139,7 +140,9 @@ This will kill the command after 2 seconds and return a TIMEOUT error.
 
 Add to your MCP client configuration (e.g., Claude Desktop):
 
-### Plain Text Mode (Recommended)
+### Basic Setup
+
+#### Plain Text Mode (Recommended)
 
 Token-efficient plain text output (default):
 
@@ -198,6 +201,80 @@ For structured JSON output, add `--json` flag:
 > **Tip**: Using `@latest` ensures you always get the newest version. You can also pin to a specific version like `bun-terminal-mcp@1.0.10`.
 
 **Find your Bun path:** Run `which bunx` in terminal to find your Bun installation path (usually `~/.bun/bin/bunx`).
+
+## Command Filtering
+
+Restrict which commands can be executed using allowlist or denylist:
+
+### Allowlist Mode (Whitelist)
+
+Only allow specific commands to run:
+
+```json
+{
+  "mcpServers": {
+    "bun-terminal-safe": {
+      "command": "bunx",
+      "args": ["--bun", "bun-terminal-mcp@latest", "--allow", "ls,cd,pwd,cat,grep,echo"]
+    }
+  }
+}
+```
+
+**Any command not in the allowlist will be blocked.**
+
+### Denylist Mode (Blacklist)
+
+Block specific dangerous commands:
+
+```json
+{
+  "mcpServers": {
+    "bun-terminal-restricted": {
+      "command": "bunx",
+      "args": ["--bun", "bun-terminal-mcp@latest", "--deny", "rm,rmdir,dd,mkfs,sudo,chmod"]
+    }
+  }
+}
+```
+
+**All commands work except those in the denylist.**
+
+### Combined with Other Flags
+
+```json
+{
+  "mcpServers": {
+    "bun-terminal-custom": {
+      "command": "bunx",
+      "args": [
+        "--bun",
+        "bun-terminal-mcp@latest",
+        "--json",
+        "--allow",
+        "ls,pwd,cat,grep"
+      ]
+    }
+  }
+}
+```
+
+### Common Safe Allowlists
+
+**Read-only operations:**
+```
+--allow ls,pwd,cat,grep,find,head,tail,wc,echo,whoami,date
+```
+
+**Basic navigation and file operations:**
+```
+--allow ls,cd,pwd,cat,grep,mkdir,touch,cp,mv,echo
+```
+
+**Git operations:**
+```
+--allow git,ls,cat,grep,diff
+```
 
 ## Security
 

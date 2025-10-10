@@ -17223,12 +17223,42 @@ function createErrorMessage(command, exitCode, stderr, errorType) {
   };
   return messages[errorType] || `Command failed with exit code ${exitCode}.`;
 }
+function extractBaseCommand(command) {
+  const trimmed = command.trim();
+  const firstWord = trimmed.split(/\s+/)[0];
+  const baseCmd = firstWord.split("|")[0].split(">")[0].split("<")[0].trim();
+  return baseCmd;
+}
+function validateCommand(command, allowedCommands, deniedCommands) {
+  const baseCommand = extractBaseCommand(command);
+  if (allowedCommands && allowedCommands.length > 0) {
+    if (!allowedCommands.includes(baseCommand)) {
+      return {
+        allowed: false,
+        reason: `Command '${baseCommand}' is not in the allowlist. Allowed commands: ${allowedCommands.join(", ")}`
+      };
+    }
+  }
+  if (deniedCommands && deniedCommands.length > 0) {
+    if (deniedCommands.includes(baseCommand)) {
+      return {
+        allowed: false,
+        reason: `Command '${baseCommand}' is in the denylist. Denied commands: ${deniedCommands.join(", ")}`
+      };
+    }
+  }
+  return { allowed: true };
+}
 
 // index.ts
 var useJsonOutput = process.argv.includes("--json");
+var allowIndex = process.argv.findIndex((arg) => arg === "--allow");
+var allowedCommands = allowIndex > -1 && process.argv[allowIndex + 1] ? process.argv[allowIndex + 1].split(",").map((cmd) => cmd.trim()) : null;
+var denyIndex = process.argv.findIndex((arg) => arg === "--deny");
+var deniedCommands = denyIndex > -1 && process.argv[denyIndex + 1] ? process.argv[denyIndex + 1].split(",").map((cmd) => cmd.trim()) : null;
 var server = new McpServer({
   name: "bun-terminal-mcp",
-  version: "1.0.10"
+  version: "1.0.11"
 });
 server.registerTool("execute_command", {
   title: "Shell Command",
@@ -17241,6 +17271,25 @@ server.registerTool("execute_command", {
   const startTime = Date.now();
   const cwd = process.cwd();
   const timeoutMs = Math.min(timeout || 30000, 300000);
+  const validation = validateCommand(command, allowedCommands, deniedCommands);
+  if (!validation.allowed) {
+    const errorOutput = useJsonOutput ? JSON.stringify({
+      success: false,
+      exitCode: -1,
+      stdout: "",
+      stderr: validation.reason,
+      command,
+      cwd,
+      duration: 0,
+      errorType: "COMMAND_BLOCKED",
+      errorMessage: validation.reason
+    }, null, 2) : `\u274C COMMAND_BLOCKED
+${validation.reason}`;
+    return {
+      content: [{ type: "text", text: errorOutput }],
+      isError: true
+    };
+  }
   try {
     const proc = Bun.spawn(["/bin/sh", "-c", command], {
       stdout: "pipe",
